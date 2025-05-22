@@ -22,7 +22,7 @@ const Sidebar = () => {
       </Link>
 
       <Link
-        href="add-book"
+        href="book"
         className=" flex gap-4 p-4 hover:bg-gray-300 hover:rounded-lg "
       >
         <ClipboardPlus className="  text-green-500 " />

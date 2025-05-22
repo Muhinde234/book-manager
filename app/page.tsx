@@ -1,85 +1,37 @@
 'use client';
-import { Button } from "@/components/button";
+import { useState, useEffect } from "react";
 import axios from "axios";
-import { Loader, Plus, Trash2, Pencil, X, Eye } from "lucide-react";
-import { useEffect, useState } from "react";
-import { BookData } from "@/types/type";
-import Link from "next/link";
+import { Plus, Eye, Pencil, Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 
+interface Book {
+  _id: string;
+  title: string;
+  author: string;
+  isbn: number;
+  publishedYear: number;
+}
 
 export default function Home() {
-  const [books, setBooks] = useState<BookData[] | null>(null);
-  const [isDeleting, setIsDeleting] = useState<string | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
-  const [isViewing, setIsViewing] = useState(false);
-  const [currentBook, setCurrentBook] = useState<BookData | null>(null);
-  const [editFormData, setEditFormData] = useState<BookData>({
-    _id: '',
-    title: '',
-    author: '',
-    publishedYear: '',
-    isbn: ''
-  });
+  const router = useRouter();
+  const [books, setBooks] = useState<Book[]>([]);
+
+  const handleAdd = () => {
+    router.push("/book");
+  };
 
   const fetchBooks = async () => {
     try {
-      const response = await axios.get('http://localhost:3001/api/v1/books');
-      setBooks(response.data);
+      const response = await axios.get("http://localhost:3001/api/v1/books");
+      if (Array.isArray(response.data)) {
+        setBooks(response.data);
+      } else {
+        console.warn("API response is not an array:", response.data);
+        setBooks([]);
+      }
     } catch (error) {
-      console.error(error);
-      setBooks([]);
-    }
-  };
-
-  const fetchBookDetails = async (_id: string) => {
-    try {
-      const response = await axios.get(`http://localhost:3001/api/v1/books/${_id}`);
-      setCurrentBook(response.data);
-      setIsViewing(true);
-    } catch (error) {
-      console.error('Failed to fetch book details:', error);
-    }
-  };
-
-  const handleDelete = async (_id: string) => {
-    try {
-      setIsDeleting(_id);
-      await axios.delete(`http://localhost:3001/api/v1/books/${_id}`);
-      await fetchBooks(); 
-    } catch (error) {
-      console.error('Failed to delete book:', error);
-    } finally {
-      setIsDeleting(null);
-    }
-  };
-
-  const handleEditClick = (book: BookData) => {
-    setCurrentBook(book);
-    setEditFormData(book);
-    setIsEditing(true);
-  };
-
-  const handleViewClick = (book: BookData) => {
-    fetchBookDetails(book._id);
-  };
-
-  const handleEditFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setEditFormData({
-      ...editFormData,
-      [name]: value
-    });
-  };
-
-  const handleEditSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await axios.patch(`http://localhost:3001/api/v1/books/${currentBook?._id}`, editFormData);
-      await fetchBooks(); 
-      setIsEditing(false);
-    } catch (error) {
-      console.error('Failed to update book:', error);
+      console.log("Error fetching books:", error);
     }
   };
 
@@ -87,245 +39,80 @@ export default function Home() {
     fetchBooks();
   }, []);
 
+  const handleView = (id: string) => {
+    router.push(`/view/${id}`);
+  };
+
+  const handleEdit = (id: string) => {
+    router.push(`/edit/${id}`);
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await axios.delete(`http://localhost:3001/api/v1/books/${id}`);
+      fetchBooks(); 
+    } catch (error) {
+      console.log("Error deleting book:", error);
+    }
+  };
+
   return (
-    <div className="relative">
-      {books === null ? (
-        <div className="flex flex-col justify-center items-center h-50">
-          <Loader size={30} className="animate-spin text-green-600"/>
-        </div>
-      ) : books.length === 0 ? (
-        <div className="flex flex-col gap-6 justify-center items-center h-50">
-          <h1 className="text-2xl mt-20">
-            Welcome to
-            <span className="text-green-600 font-bold ml-3">Book Manager</span>
-          </h1>
-          <h1 className="font-bold text-red-600 text-xl">Ooops no book found!</h1>
-          <p className="text-gray-400">
-            Get started by adding your first book to the collection
-          </p>
-          <Link href="add-book">
-           <Button className="flex gap-3">
-            <Plus />
-            Add Book
-          </Button>
-          </Link>
-          
-         
-        </div>
-      ) : (
+    <div className=" ml-72 bg-white p-8 overflow-auto flex flex-col">
+      <div className="flex justify-start mb-8">
+        
+        <button
+          className="flex items-center space-x-2 bg-green-500 text-white px-5 py-2 rounded-lg hover:bg-green-600 transition font-semibold"
+          onClick={handleAdd}
+        >
+          <Plus className="w-4 h-4 " />
+          <span>Add Book</span>
+        </button>
+      </div>
+
+      <div className="bg-gray-50 p-6 rounded-lg shadow-sm flex-grow">
+        <h2 className="text-lg text-black font-semibold mb-6 border-b border-gray-300 pb-2">Book collection</h2>
         <div className="overflow-x-auto">
-          <table className="w-[900px] ml-72 mt-30 border border-gray-300">
-            <thead className="bg-green-200">
+          <table className="min-w-full bg-white border border-gray-200 text-sm text-left">
+            <thead className="bg-gray-100">
               <tr>
-                <th className="border border-gray-300 px-4 py-2 text-left">ID</th>
-                <th className="border border-gray-300 px-4 py-2 text-left">Title</th>
-                <th className="border border-gray-300 px-4 py-2 text-left">Author</th>
-                <th className="border border-gray-300 px-4 py-2 text-left">Published Date</th>
-                <th className="border border-gray-300 px-4 py-2 text-left">ISBN</th>
-                <th className="border border-gray-300 px-4 py-2 text-left">Actions</th>
+                <th className="px-4 py-2 border">Title</th>
+                <th className="px-4 py-2 border">Author</th>
+                <th className="px-4 py-2 border">ISBN</th>
+                <th className="px-4 py-2 border">Published</th>
+                <th className="px-4 py-2 border">Action</th>
               </tr>
             </thead>
             <tbody>
               {books.map((book) => (
-                <tr key={book._id} className="border-t border-gray-300">
-                  <td className="border border-gray-300 px-4 py-2">{book._id}</td>
-                  <td className="border border-gray-300 px-4 py-2">{book.title}</td>
-                  <td className="border border-gray-300 px-4 py-2">{book.author}</td>
-                  <td className="border border-gray-300 px-4 py-2">{book.publishedYear}</td>
-                  <td className="border border-gray-300 px-4 py-2">{book.isbn}</td>
-                  <td className="border border-gray-300 px-4 py-2">
-                    <div className="flex gap-2">
-                      <button 
-                        className="text-green-600 hover:text-green-800 p-1 rounded hover:bg-green-50"
-                        onClick={() => handleViewClick(book)}
-                        aria-label="View book"
-                      >
-                        <Eye size={18} />
-                      </button>
-                      <button 
-                        className="text-blue-500 hover:text-blue-700 p-1 rounded hover:bg-blue-50"
-                        onClick={() => handleEditClick(book)}
-                        aria-label="Edit book"
-                      >
-                        <Pencil size={18} />
-                      </button>
-                      <button 
-                        className="text-red-500 hover:text-red-700 p-1 rounded hover:bg-red-50"
-                        onClick={() => handleDelete(book._id)}
-                        disabled={isDeleting === book._id}
-                        aria-label="Delete book"
-                      >
-                        {isDeleting === book._id ? (
-                          <Loader size={18} className="animate-spin" />
-                        ) : (
-                          <Trash2 size={18} />
-                        )}
-                      </button>
-                    </div>
+                <tr key={book._id} className="hover:bg-gray-50">
+                  <td className="px-4 py-2 border">{book.title}</td>
+                  <td className="px-4 py-2 border">{book.author}</td>
+                  <td className="px-4 py-2 border">{book.isbn}</td>
+                  <td className="px-4 py-2 border">{book.publishedYear}</td>
+                  <td className="px-4 py-2 border space-x-2">
+                    <button onClick={() => handleView(book._id)} className="text-blue-500 hover:text-blue-700" title="View">
+                      <Eye className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => handleEdit(book._id)} className="text-green-500 hover:text-green-700" title="Edit">
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => handleDelete(book._id)} className="text-red-500 hover:text-red-700" title="Delete">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </td>
                 </tr>
               ))}
+              {books.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="text-center py-4 text-gray-500">
+                    No books found.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
-      )}
-
-      {isEditing && (
-        <div className="fixed inset-0 bg-black/50 backdrop-opacity-sm flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold">Edit Book</h2>
-              <button 
-                onClick={() => setIsEditing(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <X size={24} />
-              </button>
-            </div>
-            
-            <form onSubmit={handleEditSubmit}>
-              <div className="mb-4">
-                <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="id">
-                  ID
-                </label>
-                <input
-                  type="text"
-                  id="_id"
-                  name="id"
-                  value={editFormData._id}
-                  required
-                  className="w-full p-2 border rounded bg-gray-100"
-                  readOnly
-                />
-              </div>
-
-              <div className="mb-4">
-                <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="title">
-                  Title
-                </label>
-                <input
-                  type="text"
-                  id="title"
-                  name="title"
-                  value={editFormData.title}
-                  onChange={handleEditFormChange}
-                  className="w-full p-2 border rounded"
-                  required
-                />
-              </div>
-              
-              <div className="mb-4">
-                <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="author">
-                  Author
-                </label>
-                <input
-                  type="text"
-                  id="author"
-                  name="author"
-                  value={editFormData.author}
-                  onChange={handleEditFormChange}
-                  className="w-full p-2 border rounded"
-                  required
-                />
-              </div>
-              
-              <div className="mb-4">
-                <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="publishedDate">
-                  Published Date
-                </label>
-                <input
-                  type="date"
-                  id="publishedYear"
-                  name="publishedYear"
-                  value={editFormData.publishedYear}
-                  onChange={handleEditFormChange}
-                  className="w-full p-2 border rounded"
-                  required
-                />
-              </div>
-              
-              <div className="mb-4">
-                <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="isbn">
-                  ISBN
-                </label>
-                <input
-                  type="text"
-                  id="isbn"
-                  name="isbn"
-                  value={editFormData.isbn}
-                  onChange={handleEditFormChange}
-                  className="w-full p-2 border rounded"
-                  required
-                />
-              </div>
-              
-              <div className="flex justify-end gap-2">
-                <Button
-                  type="button"
-                  onClick={() => setIsEditing(false)}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit">
-                  Save Changes
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {isViewing && currentBook && (
-        <div className="fixed inset-0 bg-black/50 backdrop-opacity-sm flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold">Book Details</h2>
-              <button 
-                onClick={() => setIsViewing(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <X size={24} />
-              </button>
-            </div>
-            
-            <div className="space-y-4">
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">ID</h3>
-                <p className="text-lg">{currentBook._id}</p>
-              </div>
-              
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">Title</h3>
-                <p className="text-lg">{currentBook.title}</p>
-              </div>
-              
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">Author</h3>
-                <p className="text-lg">{currentBook.author}</p>
-              </div>
-              
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">Published Date</h3>
-                <p className="text-lg">{currentBook.publishedYear}</p>
-              </div>
-              
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">ISBN</h3>
-                <p className="text-lg">{currentBook.isbn}</p>
-              </div>
-              
-              <div className="flex justify-end">
-                <Button
-                  type="button"
-                  onClick={() => setIsViewing(false)}
-                >
-                  Close
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      </div>
     </div>
   );
 }
